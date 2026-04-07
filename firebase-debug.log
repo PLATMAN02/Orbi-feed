@@ -1,0 +1,22 @@
+[debug] [2026-04-07T09:09:07.446Z] ----------------------------------------------------------------------
+[debug] [2026-04-07T09:09:07.447Z] Command:       /opt/homebrew/Cellar/node/24.5.0/bin/node /opt/homebrew/bin/firebase init
+[debug] [2026-04-07T09:09:07.447Z] CLI Version:   15.13.0
+[debug] [2026-04-07T09:09:07.448Z] Platform:      darwin
+[debug] [2026-04-07T09:09:07.448Z] Node Version:  v24.5.0
+[debug] [2026-04-07T09:09:07.448Z] Time:          Tue Apr 07 2026 14:39:07 GMT+0530 (India Standard Time)
+[debug] [2026-04-07T09:09:07.448Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-07T09:09:07.448Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/hsrish/platman/plat projects/get_things_known
+
+[debug] [2026-04-07T09:09:08.380Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-04-07T09:09:08.380Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
