@@ -421,6 +421,213 @@ button { font-family: inherit; cursor: pointer; }
 .source-dot.community { background: var(--pill-bg); }
 
 /* ══════════════════════════════════════════════════════════
+   INTRO MODAL (POPUP)
+══════════════════════════════════════════════════════════ */
+.intro-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.intro-modal-box {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-2);
+  border-radius: 32px;
+  width: 100%;
+  max-width: 680px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.intro-modal-box::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -20%;
+  width: 140%;
+  height: 200%;
+  background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 70%);
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.intro-close-btn {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t);
+  z-index: 10;
+}
+
+.intro-close-btn:hover {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+  transform: rotate(90deg);
+}
+
+.intro-modal-content {
+  padding: 48px;
+  position: relative;
+  z-index: 1;
+}
+
+.intro-header {
+  margin-bottom: 40px;
+}
+
+.intro-header h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin-bottom: 16px;
+  color: var(--text-1);
+}
+
+.intro-header p {
+  font-size: 1.15rem;
+  color: var(--text-2);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.intro-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.intro-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.intro-col-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+
+.intro-col h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.intro-col p {
+  font-size: 0.95rem;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+
+.intro-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.intro-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+  box-shadow: 0 4px 10px var(--accent-glow);
+}
+
+.intro-step p {
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.intro-step strong {
+  color: var(--text-1);
+}
+
+.intro-footer {
+  margin-top: 48px;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-get-started {
+  background: var(--accent);
+  color: #fff;
+  padding: 14px 40px;
+  border-radius: 100px;
+  font-weight: 800;
+  font-size: 1rem;
+  border: none;
+  box-shadow: 0 10px 20px var(--accent-glow);
+  transition: all var(--t);
+}
+
+.btn-get-started:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px var(--accent-glow);
+  background: var(--accent-hover);
+}
+
+@media (max-width: 768px) {
+  .intro-modal-box { border-radius: 24px; }
+  .intro-modal-content { padding: 40px 24px; }
+  .intro-header h2 { font-size: 1.8rem; }
+  .intro-grid { grid-template-columns: 1fr; gap: 32px; }
+  .intro-header { margin-bottom: 32px; }
+  .intro-footer { margin-top: 32px; }
+}
+
+/* ══════════════════════════════════════════════════════════
    FEED MAIN & CARDS
 ══════════════════════════════════════════════════════════ */
 .feed-main {

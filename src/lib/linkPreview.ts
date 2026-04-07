@@ -1,9 +1,8 @@
 import { LinkPreview } from '../types';
 
 /**
- * Fetches Open Graph / meta tags directly from the URL using the browser's
- * native fetch + DOMParser. No external APIs or proxies.
- * Returns an empty object if the site blocks cross-origin requests.
+ * Fetches Open Graph / meta tags for a URL.
+ * Uses Microlink (free tier) and falls back to an open-source CORS proxy (allorigins.win).
  */
 export const fetchLinkPreview = async (url: string): Promise<LinkPreview> => {
   let targetUrl = url.trim();
@@ -11,15 +10,15 @@ export const fetchLinkPreview = async (url: string): Promise<LinkPreview> => {
     targetUrl = 'https://' + targetUrl;
   }
 
-  console.debug('[fetchLinkPreview] starting fetch for:', targetUrl);
+  console.debug('[fetchLinkPreview] fetching:', targetUrl);
 
   try {
-    // Try Microlink API first as it bypasses CORS and parses OG tags for us
+    // 1. Try Microlink API (excellent for JS-heavy sites)
     const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(targetUrl)}`);
     if (res.ok) {
       const { data } = await res.json();
-      if (data) {
-        console.debug('[fetchLinkPreview] microlink success:', data.title);
+      if (data && (data.title || data.description)) {
+        console.debug('[fetchLinkPreview] microlink success');
         return {
           title: data.title || undefined,
           description: data.description || undefined,
@@ -28,26 +27,39 @@ export const fetchLinkPreview = async (url: string): Promise<LinkPreview> => {
       }
     }
 
-    console.debug('[fetchLinkPreview] microlink failed, trying fallback...');
+    console.debug('[fetchLinkPreview] microlink failed or empty, trying fallback proxy...');
 
-    // Fallback to CORS proxy if Microlink fails
-    const proxyRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
+    // 2. Fallback: Use open-source CORS proxy (AllOrigins)
+    // This fetches the raw HTML and we parse it locally.
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+    const proxyRes = await fetch(proxyUrl);
+    
     if (!proxyRes.ok) {
-      console.warn('[fetchLinkPreview] fallback failed:', proxyRes.status);
+      console.warn('[fetchLinkPreview] proxy failed:', proxyRes.status);
       return {};
     }
 
-    const html = await proxyRes.text();
+    const json = await proxyRes.json();
+    const html = json.contents;
+    if (!html) return {};
+
     const doc = new DOMParser().parseFromString(html, 'text/html');
 
-    const meta = (prop: string) =>
-      doc.querySelector(`meta[property="${prop}"], meta[name="${prop}"]`)
-        ?.getAttribute('content') ?? undefined;
+    // Robust meta extraction
+    const getMeta = (names: string[]) => {
+      for (const name of names) {
+        const el = doc.querySelector(`meta[property="${name}"], meta[name="${name}"], meta[itemprop="${name}"]`);
+        const content = el?.getAttribute('content');
+        if (content) return content;
+      }
+      return undefined;
+    };
 
     const result = {
-      title:       meta('og:title')       || meta('twitter:title')       || doc.title || undefined,
-      description: meta('og:description') || meta('twitter:description') || meta('description') || undefined,
-      image:       meta('og:image')       || meta('twitter:image')       || undefined,
+      title:       getMeta(['og:title', 'twitter:title', 'title']) || doc.title || undefined,
+      description: getMeta(['og:description', 'twitter:description', 'description']),
+      image:       getMeta(['og:image', 'twitter:image', 'image', 'thumbnail']) || 
+                   `https://free.pagepeeker.com/v2/thumbs.php?size=m&url=${encodeURIComponent(targetUrl)}`,
     };
     
     console.debug('[fetchLinkPreview] fallback result:', result.title);

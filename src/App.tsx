@@ -112,6 +112,7 @@ export const App = () => {
     return new Set(Array.isArray(data) ? data : []);
   });
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [showIntro, setShowIntro] = useState(() => lsGet('orbio-intro-dismissed') !== 'true');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -128,12 +129,16 @@ export const App = () => {
     setPreview(null);
     if (previewTimer.current) clearTimeout(previewTimer.current);
 
-    const trimmed = value.trim();
-    if (!trimmed.includes('.') || trimmed.length < 4) return;
+    // Basic URL extraction regex
+    const urlRegex = /(https?:\/\/[^\s]+)/i;
+    const match = value.match(urlRegex);
+    const targetUrl = match ? match[0] : value.trim();
+
+    if (!targetUrl.includes('.') || targetUrl.length < 4) return;
 
     previewTimer.current = setTimeout(async () => {
       setPreviewLoading(true);
-      const p = await fetchLinkPreview(trimmed);
+      const p = await fetchLinkPreview(targetUrl);
       setPreview(Object.keys(p).length ? p : null);
       setPreviewLoading(false);
     }, 800);
@@ -578,6 +583,91 @@ export const App = () => {
                 }
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════ INTRO MODAL (POPUP) ══════════════════ */}
+      {showIntro && (
+        <div className="intro-modal-overlay">
+          <div className="intro-modal-box">
+            <button 
+              className="intro-close-btn" 
+              onClick={() => {
+                setShowIntro(false);
+                lsSet('orbio-intro-dismissed', 'true');
+              }}
+              title="Close"
+            >
+              <X size={18} />
+            </button>
+            
+            <div className="intro-modal-content">
+              <div className="intro-header">
+                <h2>Welcome to Orbio.</h2>
+                <p>A high-signal discovery feed for the community, by the community.</p>
+              </div>
+
+              <div className="intro-grid">
+                <div className="intro-col">
+                  <div className="intro-col-label">
+                    <Sparkles size={12} />
+                    <span>The Feed</span>
+                  </div>
+                  <h3>AI-Powered Curation</h3>
+                  <p>
+                    Orbio aggregates high-signal projects from Hacker News, Reddit, and more, 
+                    using Gemini AI to summarize what actually matters.
+                  </p>
+                </div>
+
+                <div className="intro-col">
+                  <div className="intro-col-label">
+                    <Plus size={12} />
+                    <span>How to share</span>
+                  </div>
+                  <h3>Share in 3 simple steps:</h3>
+                  <div className="intro-steps">
+                    <div className="intro-step">
+                      <span className="step-num">1</span>
+                      <p>Find a cool AI tool or story and <strong>copy the link</strong>.</p>
+                    </div>
+                    <div className="intro-step">
+                      <span className="step-num">2</span>
+                      <p>Click <strong>"Post a Tool"</strong> — we'll auto-detect the link from your clipboard!</p>
+                    </div>
+                    <div className="intro-step">
+                      <span className="step-num">3</span>
+                      <p>Add your take, and we'll handle the AI summary and preview for the feed.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="intro-col" style={{ gridColumn: 'span 2' }}>
+                  <div className="intro-col-label">
+                    <Sun size={12} />
+                    <span>Why Orbio?</span>
+                  </div>
+                  <h3>Cut through the noise</h3>
+                  <p>
+                    One clean destination for staying ahead in the rapidly evolving AI landscape, 
+                    without the distractions of traditional social media.
+                  </p>
+                </div>
+              </div>
+
+              <div className="intro-footer">
+                <button 
+                  className="btn-get-started"
+                  onClick={() => {
+                    setShowIntro(false);
+                    lsSet('orbio-intro-dismissed', 'true');
+                  }}
+                >
+                  Start Discovering
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
