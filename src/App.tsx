@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import {
   Settings, ExternalLink, RefreshCw, Loader2,
-  Search, X, Link2, Sparkles,
+  Search, X, Link2, Sparkles, Plus,
   Sun, Moon, ChevronUp, ChevronDown, MessageSquareQuote,
   ChevronLeft, ChevronRight, Bookmark,
 } from 'lucide-react';
@@ -127,25 +127,33 @@ export const App = () => {
     setUrl(value);
     setPreview(null);
     if (previewTimer.current) clearTimeout(previewTimer.current);
-    if (!/^https?:\/\/.{4,}/i.test(value.trim())) return;
+
+    const trimmed = value.trim();
+    if (!trimmed.includes('.') || trimmed.length < 4) return;
+
     previewTimer.current = setTimeout(async () => {
       setPreviewLoading(true);
-      const p = await fetchLinkPreview(value.trim());
+      const p = await fetchLinkPreview(trimmed);
       setPreview(Object.keys(p).length ? p : null);
       setPreviewLoading(false);
-    }, 700);
+    }, 800);
   }, []);
 
-  // ── clipboard auto-detect ────────────────────────────────────────────────
   const handleClipboardLink = useCallback(async () => {
+    if (!navigator.clipboard) {
+      console.warn('Clipboard API not available');
+      return;
+    }
     try {
       const text = await navigator.clipboard.readText();
       const validText = text?.trim() || '';
-      if (validText.startsWith('http://') || validText.startsWith('https://')) {
+      const isLink = validText.startsWith('http') || (validText.includes('.') && validText.length > 4 && !validText.includes(' '));
+      
+      if (isLink) {
         const lastLink = lsGet('orbio-last-link');
         if (validText !== lastLink) {
           if (urlRef.current && urlRef.current !== validText) {
-            return; // never overwrite user input if already typed
+            return;
           }
           lsSet('orbio-last-link', validText);
           setShowSubmit(true);
@@ -154,7 +162,7 @@ export const App = () => {
         }
       }
     } catch (e) {
-      // silently ignore
+      console.error('Clipboard read failed:', e);
     }
   }, [handleUrlChange]);
 
@@ -201,7 +209,11 @@ export const App = () => {
     else q = q.order('created_at', { ascending: false });
 
     const { data, error, count } = await q.range(from, to);
-    if (error) { toast.error('Failed to load feed'); }
+    console.debug('[fetchTools] result:', { dataCount: data?.length, error, count });
+    if (error) { 
+      console.error('[fetchTools] error:', error);
+      toast.error('Failed to load feed'); 
+    }
     else {
       setTools((data as Tool[]) ?? []);
       setTotalCount(count ?? 0);
@@ -304,8 +316,13 @@ export const App = () => {
     if (showBookmarks && !bookmarkedIds.has(t.id)) return false;
     if (!search) return true;
     const q = search.toLowerCase();
-    return [t.name, t.summary, t.title, t.why_it_matters, ...(t.tags ?? [])]
+    const match = [t.name, t.summary, t.title, t.why_it_matters, ...(t.tags ?? [])]
       .filter(Boolean).join(' ').toLowerCase().includes(q);
+    return match;
+  });
+
+  console.debug('[render] tools:', tools.length, 'filtered:', filtered.length, {
+    timeRange, sortBy, sourceFilter, showBookmarks
   });
 
   const sources: { id: SourceFilter; label: string }[] = [
@@ -404,87 +421,90 @@ export const App = () => {
 
       {/* ══════════════════ HEADER ══════════════════ */}
       <header className="app-header">
-        <div className="header-left">
-          <a href="/" className="logo-wrap" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
-            <img 
-              src={appIcon} 
-              alt="Orbio icon" 
-              className="app-logo-img"
-            />
-            <h1 className="logo-text">Orbio</h1>
-          </a>
-          <div className="stats-text">
-            <span className="live-dot" />
-            {totalCount} stories live
+        <div className="header-content">
+          <div className="header-left">
+            <a href="/" className="logo-wrap" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+              <img 
+                src={appIcon} 
+                alt="Orbio icon" 
+                className="app-logo-img"
+              />
+              <h1 className="logo-text">Orbio</h1>
+            </a>
           </div>
-        </div>
 
-        <div className="header-right">
-          <button className="hdr-btn" onClick={() => handleRefresh(true)} disabled={importing || loading}>
-            {(importing || loading) ? <RefreshCw size={14} className="spin" /> : <RefreshCw size={14} />}
-            <span className="hdr-btn-label">Refresh</span>
-          </button>
-          <button className="hdr-btn" onClick={() => {
-            if (!showSubmit) handleClipboardLink();
-            setShowSubmit(!showSubmit);
-          }}>
-            <Link2 size={14} />
-            <span className="hdr-btn-label">Share</span>
-          </button>
-          <button className="hdr-btn theme-toggle" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}>
-            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-          </button>
-          <button className="hdr-btn icon-only" onClick={() => setShowSettings(true)}>
-            <Settings size={14} />
-          </button>
+          <div className="header-right">
+            <button className="hdr-btn labeled desktop-only" onClick={() => {
+              if (!showSubmit) handleClipboardLink();
+              setShowSubmit(!showSubmit);
+            }}>
+              <Plus size={14} />
+              <span className="hdr-btn-label">Post a Tool</span>
+            </button>
+
+            <button className="hdr-btn labeled" onClick={() => handleRefresh(true)} disabled={importing || loading}>
+              {(importing || loading) ? <RefreshCw size={14} className="spin" /> : <RefreshCw size={14} />}
+              <span className="hdr-btn-label">Refresh</span>
+            </button>
+            <button className="hdr-btn theme-toggle" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}>
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+            <button className="hdr-btn icon-only" onClick={() => setShowSettings(true)}>
+              <Settings size={14} />
+            </button>
+          </div>
         </div>
       </header>
 
       {/* ══════════════════ SEARCH & FILTERS ══════════════════ */}
       <div className="search-filter-row">
-        <div className="search-input-wrap">
-          <Search size={15} className="search-icon" />
-          <input
-            className="search-input"
-            placeholder="Search articles..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="sf-content">
+          <div className="search-input-wrap">
+            <Search size={15} className="search-icon" />
+            <input
+              className="search-input"
+              placeholder="Search articles..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select className="time-select" value={timeRange} onChange={(e) => setTimeRange(e.target.value as TimeRange)}>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="all">All time</option>
+          </select>
+          <select className="time-select" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
+            <option value="new">Newest</option>
+            <option value="top">Top Voted</option>
+          </select>
         </div>
-        <select className="time-select" value={timeRange} onChange={(e) => setTimeRange(e.target.value as TimeRange)}>
-          <option value="today">Today</option>
-          <option value="week">This Week</option>
-          <option value="month">This Month</option>
-          <option value="all">All time</option>
-        </select>
-        <select className="time-select" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
-          <option value="new">Newest</option>
-          <option value="top">Top Voted</option>
-        </select>
       </div>
 
       {/* ══════════════════ SOURCE CHIPS ══════════════════ */}
       <div className="category-bar">
-        {sources.map((src) => (
+        <div className="cb-content">
+          {sources.map((src) => (
+            <button
+              key={src.id}
+              className={`cat-chip ${sourceFilter === src.id && !showBookmarks ? 'active' : ''}`}
+              data-source={src.id}
+              onClick={() => { setShowBookmarks(false); setSourceFilter(src.id); }}
+            >
+              {src.id === 'hn'        && <span className="source-dot hn" />}
+              {src.id === 'reddit'    && <span className="source-dot reddit" />}
+              {src.id === 'community' && <span className="source-dot community" />}
+              {src.label}
+            </button>
+          ))}
           <button
-            key={src.id}
-            className={`cat-chip ${sourceFilter === src.id && !showBookmarks ? 'active' : ''}`}
-            data-source={src.id}
-            onClick={() => { setShowBookmarks(false); setSourceFilter(src.id); }}
+            className={`cat-chip ${showBookmarks ? 'active' : ''}`}
+            onClick={() => setShowBookmarks(v => !v)}
           >
-            {src.id === 'hn'        && <span className="source-dot hn" />}
-            {src.id === 'reddit'    && <span className="source-dot reddit" />}
-            {src.id === 'community' && <span className="source-dot community" />}
-            {src.label}
+            <Bookmark size={12} />
+            Bookmarks{bookmarkedIds.size > 0 && ` (${bookmarkedIds.size})`}
           </button>
-        ))}
-        <button
-          className={`cat-chip ${showBookmarks ? 'active' : ''}`}
-          onClick={() => setShowBookmarks(v => !v)}
-        >
-          <Bookmark size={12} />
-          Bookmarks{bookmarkedIds.size > 0 && ` (${bookmarkedIds.size})`}
-        </button>
+        </div>
       </div>
 
       {/* ══════════════════ SUBMIT PANEL ══════════════════ */}
@@ -499,10 +519,16 @@ export const App = () => {
               <input
                 type="url"
                 className="s-input"
-                placeholder="Paste URL here…"
+                placeholder="Paste URL here (e.g. google.com)…"
                 value={url}
                 onChange={(e) => handleUrlChange(e.target.value)}
-                onFocus={handleClipboardLink}
+                onFocus={() => {
+                  if (!navigator.clipboard) {
+                    toast.error('Use https or localhost for clipboard detection', { id: 'secure-ctx', duration: 2000 });
+                  } else {
+                    handleClipboardLink();
+                  }
+                }}
                 required
                 disabled={submitting}
                 autoFocus
@@ -523,11 +549,11 @@ export const App = () => {
               </div>
             </form>
 
-            {(previewLoading || preview) && (
+            {(previewLoading || preview || (url && url.includes('.'))) && (
               <div className="link-preview">
                 {previewLoading
                   ? <div className="preview-loading"><Loader2 size={12} className="spin" /> Fetching preview…</div>
-                  : preview && (
+                  : preview ? (
                     <div className="preview-inner">
                       {preview.image && (
                         <img src={preview.image} alt="og" className="preview-img"
@@ -536,7 +562,17 @@ export const App = () => {
                       <div className="preview-text">
                         {preview.title && <p className="preview-title">{preview.title}</p>}
                         {preview.description && <p className="preview-desc">{preview.description}</p>}
+                        <button type="button" className="retry-preview-btn" onClick={() => handleUrlChange(url)}>
+                          <RefreshCw size={10} /> Refresh Preview
+                        </button>
                       </div>
+                    </div>
+                  ) : url.includes('.') && (
+                    <div className="preview-none">
+                      <span className="no-preview-msg">No preview available</span>
+                      <button type="button" className="retry-preview-btn" onClick={() => handleUrlChange(url)}>
+                        <RefreshCw size={10} /> Try Again
+                      </button>
                     </div>
                   )
                 }
@@ -547,57 +583,59 @@ export const App = () => {
       )}
 
       <main className="feed-main">
-        {loading && tools.length === 0 ? (
-          <div className="empty-state">
-            <Loader2 size={28} className="spin" style={{ color: 'var(--accent)' }} />
-            <p>Fetching your feed…</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="empty-state">
-            <Sparkles size={28} opacity={0.3} />
-            <p>
-              {showBookmarks
-                ? 'No bookmarks yet — click the bookmark icon on any story'
-                : search
-                  ? `No results for "${search}"`
-                  : timeRange !== 'all'
-                    ? 'No items in this time range — try "All Time"'
-                    : 'Nothing yet — click Refresh!'}
-            </p>
-            {timeRange !== 'all' && (
-              <button className="empty-action" onClick={() => setTimeRange('all')}>Show All Time</button>
-            )}
-          </div>
-        ) : (
-          <div className="feed-list">
-            {filtered.map((tool) => (
-              <FeedCard
-                key={tool.id}
-                tool={tool}
-                onVote={handleVote}
-                onSummarize={handleSummarize}
-                voted={votedIds[tool.id]}
-                bookmarked={bookmarkedIds.has(tool.id)}
-                onBookmark={handleBookmark}
-              />
-            ))}
-          </div>
-        )}
+        <div className="feed-content">
+          {loading && tools.length === 0 ? (
+            <div className="empty-state">
+              <Loader2 size={28} className="spin" style={{ color: 'var(--accent)' }} />
+              <p>Fetching your feed…</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="empty-state">
+              <Sparkles size={28} opacity={0.3} />
+              <p>
+                {showBookmarks
+                  ? 'No bookmarks yet — click the bookmark icon on any story'
+                  : search
+                    ? `No results for "${search}"`
+                    : timeRange !== 'all'
+                      ? 'No items in this time range — try "All Time"'
+                      : 'Nothing yet — click Refresh!'}
+              </p>
+              {timeRange !== 'all' && (
+                <button className="empty-action" onClick={() => setTimeRange('all')}>Show All Time</button>
+              )}
+            </div>
+          ) : (
+            <div className="feed-list">
+              {filtered.map((tool) => (
+                <FeedCard
+                  key={tool.id}
+                  tool={tool}
+                  onVote={handleVote}
+                  onSummarize={handleSummarize}
+                  voted={votedIds[tool.id]}
+                  bookmarked={bookmarkedIds.has(tool.id)}
+                  onBookmark={handleBookmark}
+                />
+              ))}
+            </div>
+          )}
 
-        {totalPages > 1 && !loading && (
-          <div className="pagination">
-            <button className="page-btn" disabled={page === 0} onClick={() => goToPage(page - 1)}>
-              <ChevronLeft size={15} /> Prev
-            </button>
-            <span className="page-info">
-              Page {page + 1} of {totalPages}
-              <span className="page-count"> · {totalCount} total</span>
-            </span>
-            <button className="page-btn" disabled={page >= totalPages - 1} onClick={() => goToPage(page + 1)}>
-              Next <ChevronRight size={15} />
-            </button>
-          </div>
-        )}
+          {totalPages > 1 && !loading && (
+            <div className="pagination">
+              <button className="page-btn" disabled={page === 0} onClick={() => goToPage(page - 1)}>
+                <ChevronLeft size={15} /> Prev
+              </button>
+              <span className="page-info">
+                Page {page + 1} of {totalPages}
+                <span className="page-count"> · {totalCount} total</span>
+              </span>
+              <button className="page-btn" disabled={page >= totalPages - 1} onClick={() => goToPage(page + 1)}>
+                Next <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
+        </div>
       </main>
 
       {/* ══════════════════ SETTINGS MODAL ══════════════════ */}
@@ -627,6 +665,18 @@ export const App = () => {
           </div>
         </div>
       )}
+
+      {/* ══════════════════ FLOATING ACTIONS ══════════════════ */}
+      <button 
+        className={`floating-share-btn mobile-only ${showSubmit ? 'active' : ''}`}
+        onClick={() => {
+          if (!showSubmit) handleClipboardLink();
+          setShowSubmit(!showSubmit);
+        }}
+      >
+        <Plus size={20} className="plus-icon" />
+        <span>{showSubmit ? 'Close' : 'Post a Tool'}</span>
+      </button>
 
       <style>{`.spin{animation:_s .85s linear infinite}@keyframes _s{100%{transform:rotate(360deg)}}`}</style>
     </div>
